@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>R Orientation Quiz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .setup-screen {
+            display: block;
+        }
+
+        .quiz-screen, .results-screen {
+            display: none;
+        }
+
+        h1 {
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        h2 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .question-container {
+            margin-bottom: 30px;
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .question-number {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .timer {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #e53e3e;
+            min-width: 80px;
+        }
+
+        .timer.warning {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .image-container {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .quiz-image {
+            max-width: 300px;
+            max-height: 300px;
+            width: auto;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .options {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .option-btn {
+            background: white;
+            border: 3px solid #e2e8f0;
+            color: #4a5568;
+            padding: 15px 25px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 140px;
+        }
+
+        .option-btn:hover {
+            border-color: #667eea;
+            background: #f7fafc;
+        }
+
+        .option-btn.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .timer-progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .timer-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78, #38a169);
+            transition: width 0.1s linear;
+        }
+
+        .timer-progress-fill.warning {
+            background: linear-gradient(90deg, #f56565, #e53e3e);
+        }
+
+        .results-summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .score-card {
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .correct-card {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+        }
+
+        .incorrect-card {
+            background: linear-gradient(135deg, #f56565, #e53e3e);
+            color: white;
+        }
+
+        .score-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .score-label {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .detailed-results {
+            text-align: left;
+            max-height: 400px;
+            overflow-y: auto;
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #e2e8f0;
+            gap: 15px;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+        }
+
+        .result-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+
+        .result-question {
+            font-weight: 600;
+        }
+
+        .result-answers {
+            text-align: right;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .correct-answer {
+            color: #38a169;
+        }
+
+        .incorrect-answer {
+            color: #e53e3e;
+        }
+
+        .placeholder-image {
+            width: 200px;
+            height: 200px;
+            background: linear-gradient(45deg, #f0f0f0, #e0e0e0);
+            border: 2px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            border-radius: 8px;
+            color: #888;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Setup Screen -->
+        <div class="setup-screen">
+            <h1>R Orientation Quiz</h1>
+            <div class="input-group">
+                <label for="numQuestions">Number of Questions:</label>
+                <input type="number" id="numQuestions" min="1" max="50" value="10">
+            </div>
+            <div class="input-group">
+                <label for="timePerQuestion">Time per Question (milliseconds):</label>
+                <input type="number" id="timePerQuestion" min="500" max="30000" value="3000">
+            </div>
+            <button class="btn" onclick="startQuiz()">Start Quiz</button>
+            <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; font-size: 14px; color: #856404;">
+                <strong>Instructions:</strong><br>
+                Group 1 means an Orientation of R. Group 2 means an Orientation of mirror-R.
+            </div>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div class="quiz-screen">
+            <div class="question-header">
+                <div class="question-number" id="questionNumber">Question 1 of 10</div>
+                <div class="timer" id="timer">0.0s</div>
+            </div>
+            <div class="timer-progress-bar">
+                <div class="timer-progress-fill" id="timerProgressFill"></div>
+            </div>
+            <div class="question-container">
+                <div class="image-container">
+                    <div class="placeholder-image" id="questionImage">
+                        Image will appear here
+                    </div>
+                </div>
+                <div class="options">
+                    <button class="option-btn" onclick="selectAnswer(1)">Group 1<br><small>(R)</small></button>
+                    <button class="option-btn" onclick="selectAnswer(2)">Group 2<br><small>(Mirror R)</small></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div class="results-screen">
+            <h1>Quiz Results</h1>
+            <div class="results-summary">
+                <div class="score-card correct-card">
+                    <div class="score-number" id="correctCount">0</div>
+                    <div class="score-label">Correct</div>
+                </div>
+                <div class="score-card incorrect-card">
+                    <div class="score-number" id="incorrectCount">0</div>
+                    <div class="score-label">Incorrect</div>
+                </div>
+            </div>
+            <div class="detailed-results" id="detailedResults"></div>
+            <button class="btn" onclick="restartQuiz()">Take Quiz Again</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - Replace these with your actual images and their correct groups
+        const imageData = [
+            { id: 1, src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzAwMDAwMCIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UjwvdGV4dD48L3N2Zz4=', correctGroup: 1, name: 'R1' },
+            { id: 2, src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzAwMDAwMCIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgdHJhbnNmb3JtPSJyb3RhdGUoOTAgMTAwIDEwMCkiPlI8L3RleHQ+PC9zdmc+', correctGroup: 1, name: 'R2' },
+            { id: 3, src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzAwMDAwMCIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgdHJhbnNmb3JtPSJyb3RhdGUoMTgwIDEwMCAxMDApIj5SPC90ZXh0Pjwvc3ZnPg==', correctGroup: 1, name: 'R3' },
+            { id: 4, src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzAwMDAwMCIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgdHJhbnNmb3JtPSJyb3RhdGUoMjcwIDEwMCAxMDApIj5SPC90ZXh0Pjwvc3ZnPg==', correctGroup: 1, name: 'R4' },
+            { id: 5, src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzAwMDAwMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEwMCwxMDApIHNjYWxlKC0xLDEpIHRyYW5zbGF0ZSgtMTAwLC0xMDApIj48dGV4dCB4PSIxMDAiIHk9IjEwMCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjQwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlI8L3RleHQ+PC9nPjwvc3ZnPg==', correctGroup: 2, name: 'MR1' },
+            { id: 6, src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzAwMDAwMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEwMCwxMDApIHNjYWxlKC0xLDEpIHJvdGF0ZSg5MCkgdHJhbnNsYXRlKC0xMDAsLTEwMCkiPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UjwvdGV4dD48L2c+PC9zdmc+', correctGroup: 2, name: 'MR2' },
+            { id: 7, src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzAwMDAwMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEwMCwxMDApIHNjYWxlKC0xLDEpIHJvdGF0ZSgxODApIHRyYW5zbGF0ZSgtMTAwLC0xMDApIj48dGV4dCB4PSIxMDAiIHk9IjEwMCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjQwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlI8L3RleHQ+PC9nPjwvc3ZnPg==', correctGroup: 2, name: 'MR3' },
+            { id: 8, src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzAwMDAwMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEwMCwxMDApIHNjYWxlKC0xLDEpIHJvdGF0ZSgyNzApIHRyYW5zbGF0ZSgtMTAwLC0xMDApIj48dGV4dCB4PSIxMDAiIHk9IjEwMCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjQwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlI8L3RleHQ+PC9nPjwvc3ZnPg==', correctGroup: 2, name: 'MR4' }
+        ];
+
+        let quizConfig = {};
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let selectedAnswer = null;
+        let timer = null;
+        let timeRemaining = 0;
+        let userAnswers = [];
+        let isQuizActive = false;
+
+        function cleanupQuiz() {
+            // Clear timer
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+            
+            // Reset all variables
+            questions = [];
+            currentQuestionIndex = 0;
+            selectedAnswer = null;
+            timeRemaining = 0;
+            userAnswers = [];
+            isQuizActive = false;
+            
+            // Reset UI elements
+            const timerElement = document.getElementById('timer');
+            const progressElement = document.getElementById('timerProgressFill');
+            const questionNumber = document.getElementById('questionNumber');
+            const questionImage = document.getElementById('questionImage');
+            
+            if (timerElement) {
+                timerElement.textContent = '0.0s';
+                timerElement.classList.remove('warning');
+            }
+            
+            if (progressElement) {
+                progressElement.style.width = '0%';
+                progressElement.classList.remove('warning');
+            }
+            
+            if (questionNumber) {
+                questionNumber.textContent = 'Question 1 of 10';
+            }
+            
+            if (questionImage) {
+                questionImage.innerHTML = 'Image will appear here';
+                questionImage.className = 'placeholder-image';
+            }
+            
+            // Reset option buttons
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.classList.remove('selected');
+                btn.disabled = false;
+            });
+            
+            // Clear results
+            const correctCount = document.getElementById('correctCount');
+            const incorrectCount = document.getElementById('incorrectCount');
+            const detailedResults = document.getElementById('detailedResults');
+            
+            if (correctCount) correctCount.textContent = '0';
+            if (incorrectCount) incorrectCount.textContent = '0';
+            if (detailedResults) detailedResults.innerHTML = '';
+        }
+
+        function startQuiz() {
+            const numQuestions = parseInt(document.getElementById('numQuestions').value);
+            const timePerQuestion = parseInt(document.getElementById('timePerQuestion').value);
+
+            if (numQuestions < 1 || numQuestions > 50) {
+                alert('Please enter a valid number of questions (1-50)');
+                return;
+            }
+
+            if (timePerQuestion < 500 || timePerQuestion > 30000) {
+                alert('Please enter a valid time per question (500-30000ms)');
+                return;
+            }
+
+            // Clean up any previous quiz state
+            cleanupQuiz();
+            
+            // Clear browser cache (except for input values which we already captured)
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => {
+                        caches.delete(name);
+                    });
+                });
+            }
+
+            quizConfig = { numQuestions, timePerQuestion };
+            generateQuestions();
+            
+            document.querySelector('.setup-screen').style.display = 'none';
+            document.querySelector('.quiz-screen').style.display = 'block';
+            
+            isQuizActive = true;
+            showQuestion();
+        }
+
+        function generateQuestions() {
+            questions = [];
+            for (let i = 0; i < quizConfig.numQuestions; i++) {
+                const randomImage = imageData[Math.floor(Math.random() * imageData.length)];
+                questions.push({
+                    imageData: randomImage,
+                    correctAnswer: randomImage.correctGroup
+                });
+            }
+        }
+
+        function showQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                showResults();
+                return;
+            }
+
+            const question = questions[currentQuestionIndex];
+            selectedAnswer = null;
+
+            // Update question number
+            document.getElementById('questionNumber').textContent = 
+                `Question ${currentQuestionIndex + 1} of ${questions.length}`;
+
+            // Show image
+            const imageContainer = document.getElementById('questionImage');
+            if (question.imageData.src.startsWith('data:')) {
+                // For placeholder images
+                imageContainer.innerHTML = `<img src="${question.imageData.src}" alt="R Orientation ${question.imageData.name}" class="quiz-image">`;
+            } else {
+                // For actual image files
+                imageContainer.innerHTML = `<img src="${question.imageData.src}" alt="R Orientation" class="quiz-image">`;
+            }
+
+            // Reset option buttons
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.classList.remove('selected');
+                btn.disabled = false;
+            });
+
+            // Start timer
+            startTimer();
+        }
+
+        function startTimer() {
+            timeRemaining = 0;
+            updateTimerDisplay();
+
+            timer = setInterval(() => {
+                timeRemaining += 100;
+                updateTimerDisplay();
+
+                if (timeRemaining >= quizConfig.timePerQuestion) {
+                    clearInterval(timer);
+                    submitAnswer();
+                }
+            }, 100);
+        }
+
+        function updateTimerDisplay() {
+            const seconds = (timeRemaining / 1000).toFixed(1);
+            const timerElement = document.getElementById('timer');
+            const progressElement = document.getElementById('timerProgressFill');
+            
+            timerElement.textContent = seconds + 's';
+            
+            // Update progress bar
+            const progressPercent = (timeRemaining / quizConfig.timePerQuestion) * 100;
+            progressElement.style.width = progressPercent + '%';
+            
+            // Change color when 80% of time has elapsed
+            if (timeRemaining >= quizConfig.timePerQuestion * 0.8) {
+                timerElement.classList.add('warning');
+                progressElement.classList.add('warning');
+            } else {
+                timerElement.classList.remove('warning');
+                progressElement.classList.remove('warning');
+            }
+        }
+
+        function selectAnswer(answer) {
+            if (!isQuizActive || selectedAnswer !== null) {
+                return; // Prevent multiple selections or selections when quiz is not active
+            }
+            
+            selectedAnswer = answer;
+            
+            // Update button styles
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            event.target.classList.add('selected');
+            
+            // Auto-submit after a short delay for better UX
+            setTimeout(() => {
+                if (selectedAnswer === answer && isQuizActive) {
+                    submitAnswer();
+                }
+            }, 300);
+        }
+
+        function submitAnswer() {
+            if (!isQuizActive) {
+                return; // Prevent multiple submissions
+            }
+            
+            clearInterval(timer);
+            timer = null;
+            
+            // Disable all buttons
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.disabled = true;
+            });
+
+            const question = questions[currentQuestionIndex];
+            const isCorrect = selectedAnswer === question.correctAnswer;
+            
+            userAnswers.push({
+                questionNumber: currentQuestionIndex + 1,
+                imageName: question.imageData.name,
+                userAnswer: selectedAnswer,
+                correctAnswer: question.correctAnswer,
+                isCorrect: isCorrect,
+                timeUsed: timeRemaining
+            });
+
+            // Move to next question after a brief pause
+            setTimeout(() => {
+                if (isQuizActive) { // Double check quiz is still active
+                    currentQuestionIndex++;
+                    selectedAnswer = null; // Reset for next question
+                    showQuestion();
+                }
+            }, 500);
+        }
+
+        function showResults() {
+            isQuizActive = false; // Mark quiz as no longer active
+            
+            // Clean up timer if still running
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+            
+            document.querySelector('.quiz-screen').style.display = 'none';
+            document.querySelector('.results-screen').style.display = 'block';
+
+            const correctAnswers = userAnswers.filter(answer => answer.isCorrect).length;
+            const incorrectAnswers = userAnswers.length - correctAnswers;
+
+            document.getElementById('correctCount').textContent = correctAnswers;
+            document.getElementById('incorrectCount').textContent = incorrectAnswers;
+
+            // Show detailed results
+            const detailedResults = document.getElementById('detailedResults');
+            detailedResults.innerHTML = '';
+
+            userAnswers.forEach(answer => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                
+                const groupNames = { 1: 'Group 1 (R)', 2: 'Group 2 (Mirror R)', null: 'No Answer' };
+                const question = questions[answer.questionNumber - 1];
+                
+                resultItem.innerHTML = `
+                    <div class="result-left">
+                        <img src="${question.imageData.src}" alt="${answer.imageName}" class="result-image">
+                        <div class="result-question">
+                            Q${answer.questionNumber}: ${answer.imageName}
+                        </div>
+                    </div>
+                    <div class="result-answers">
+                        <div class="${answer.isCorrect ? 'correct-answer' : 'incorrect-answer'}">
+                            Your answer: ${groupNames[answer.userAnswer] || 'No Answer'}
+                        </div>
+                        <div class="correct-answer">
+                            Correct: ${groupNames[answer.correctAnswer]}
+                        </div>
+                    </div>
+                `;
+                detailedResults.appendChild(resultItem);
+            });
+        }
+
+        function restartQuiz() {
+            // Preserve input values before cleanup
+            const numQuestions = document.getElementById('numQuestions').value;
+            const timePerQuestion = document.getElementById('timePerQuestion').value;
+            
+            // Complete cleanup
+            cleanupQuiz();
+            
+            // Show setup screen
+            document.querySelector('.results-screen').style.display = 'none';
+            document.querySelector('.setup-screen').style.display = 'block';
+            
+            // Restore input values
+            document.getElementById('numQuestions').value = numQuestions;
+            document.getElementById('timePerQuestion').value = timePerQuestion;
+        }
+
+        // Preload images for better performance
+        window.addEventListener('load', () => {
+            imageData.forEach(img => {
+                const image = new Image();
+                image.src = img.src;
+            });
+        });
+    </script>
+</body>
+</html>
