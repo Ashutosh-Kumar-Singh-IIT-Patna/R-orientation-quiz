@@ -398,85 +398,19 @@
             { id: 8, src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzAwMDAwMCIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEwMCwxMDApIHNjYWxlKC0xLDEpIHJvdGF0ZSgyNzApIHRyYW5zbGF0ZSgtMTAwLC0xMDApIj48dGV4dCB4PSIxMDAiIHk9IjEwMCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjQwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlI8L3RleHQ+PC9nPjwvc3ZnPg==', correctGroup: 2, name: 'MR4' }
         ];
 
-        // Quiz state management
-        class QuizState {
-            constructor() {
-                this.reset();
-            }
-
-            reset() {
-                this.config = {};
-                this.questions = [];
-                this.currentQuestionIndex = 0;
-                this.selectedAnswer = null;
-                this.userAnswers = [];
-                this.isActive = false;
-                this.questionState = 'waiting'; // 'waiting', 'active', 'answered', 'transitioning'
-                this.timers = new Set();
-                this.animationFrames = new Set();
-                this.startTime = 0;
-            }
-
-            cleanup() {
-                // Clear all timers
-                this.timers.forEach(timer => clearTimeout(timer));
-                this.timers.clear();
-                
-                // Cancel all animation frames
-                this.animationFrames.forEach(frame => cancelAnimationFrame(frame));
-                this.animationFrames.clear();
-                
-                this.isActive = false;
-                this.questionState = 'waiting';
-            }
-
-            addTimer(timerId) {
-                this.timers.add(timerId);
-                return timerId;
-            }
-
-            addAnimationFrame(frameId) {
-                this.animationFrames.add(frameId);
-                return frameId;
-            }
-
-            removeTimer(timerId) {
-                clearTimeout(timerId);
-                this.timers.delete(timerId);
-            }
-
-            removeAnimationFrame(frameId) {
-                cancelAnimationFrame(frameId);
-                this.animationFrames.delete(frameId);
-            }
-        }
-
-        const quiz = new QuizState();
-
-        // Debounce utility
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-
-        // Throttle utility
-        function throttle(func, limit) {
-            let inThrottle;
-            return function(...args) {
-                if (!inThrottle) {
-                    func.apply(this, args);
-                    inThrottle = true;
-                    setTimeout(() => inThrottle = false, limit);
-                }
-            };
-        }
+        // Quiz state - simplified and more reliable
+        let quiz = {
+            config: {},
+            questions: [],
+            currentQuestionIndex: 0,
+            selectedAnswer: null,
+            userAnswers: [],
+            isActive: false,
+            canAnswer: false,
+            timerId: null,
+            animationId: null,
+            startTime: 0
+        };
 
         function startQuiz() {
             const numQuestions = parseInt(document.getElementById('numQuestions').value);
@@ -492,52 +426,51 @@
                 return;
             }
 
-            // Complete cleanup before starting
+            // Reset quiz state
             cleanupQuiz();
+            quiz = {
+                config: { numQuestions, timePerQuestion },
+                questions: [],
+                currentQuestionIndex: 0,
+                selectedAnswer: null,
+                userAnswers: [],
+                isActive: true,
+                canAnswer: false,
+                timerId: null,
+                animationId: null,
+                startTime: 0
+            };
 
-            quiz.config = { numQuestions, timePerQuestion };
             generateQuestions();
             
             document.querySelector('.setup-screen').style.display = 'none';
             document.querySelector('.quiz-screen').style.display = 'block';
             
-            quiz.isActive = true;
-            quiz.questionState = 'waiting';
-            
-            // Add event listeners for option buttons
             setupEventListeners();
-            
             showQuestion();
         }
 
         function setupEventListeners() {
-            // Remove existing listeners first
+            // Clear existing listeners by cloning nodes
             document.querySelectorAll('.option-btn').forEach(btn => {
-                btn.replaceWith(btn.cloneNode(true));
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
             });
 
-            // Add new listeners with proper event handling
+            // Add simple click handlers
             document.querySelectorAll('.option-btn').forEach(btn => {
-                btn.addEventListener('click', handleAnswerClick, { once: false });
-                btn.addEventListener('touchstart', handleAnswerTouch, { passive: true });
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (!quiz.isActive || !quiz.canAnswer) {
+                        return;
+                    }
+
+                    const answer = parseInt(this.getAttribute('data-answer'));
+                    selectAnswer(answer);
+                });
             });
-        }
-
-        const handleAnswerClick = throttle(function(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            if (!quiz.isActive || quiz.questionState !== 'active') {
-                return;
-            }
-
-            const answer = parseInt(this.getAttribute('data-answer'));
-            selectAnswer(answer);
-        }, 100);
-
-        function handleAnswerTouch(event) {
-            // Prevent double-tap zoom on mobile
-            event.preventDefault();
         }
 
         function generateQuestions() {
@@ -545,7 +478,7 @@
             for (let i = 0; i < quiz.config.numQuestions; i++) {
                 const randomImage = imageData[Math.floor(Math.random() * imageData.length)];
                 quiz.questions.push({
-                    imageData: { ...randomImage }, // Create a copy to avoid reference issues
+                    imageData: { ...randomImage },
                     correctAnswer: randomImage.correctGroup
                 });
             }
@@ -557,58 +490,62 @@
                 return;
             }
 
-            quiz.questionState = 'transitioning';
+            quiz.canAnswer = false;
             quiz.selectedAnswer = null;
-
+            
             const question = quiz.questions[quiz.currentQuestionIndex];
 
             // Update question number
             document.getElementById('questionNumber').textContent = 
                 `Question ${quiz.currentQuestionIndex + 1} of ${quiz.questions.length}`;
 
-            // Show image with error handling
+            // Show image
             const imageContainer = document.getElementById('questionImage');
             if (question.imageData.src.startsWith('data:') || question.imageData.src.includes('.')) {
                 const img = document.createElement('img');
                 img.className = 'quiz-image';
                 img.alt = `R Orientation ${question.imageData.name}`;
+                
+                img.onload = () => {
+                    quiz.canAnswer = true;
+                    startTimer();
+                };
+                
                 img.onerror = () => {
                     imageContainer.innerHTML = `<div class="placeholder-image">Image not found: ${question.imageData.name}</div>`;
+                    quiz.canAnswer = true;
+                    startTimer();
                 };
-                img.onload = () => {
-                    quiz.questionState = 'active';
-                };
+                
                 img.src = question.imageData.src;
                 imageContainer.innerHTML = '';
                 imageContainer.appendChild(img);
             } else {
                 imageContainer.innerHTML = `<div class="placeholder-image">${question.imageData.name}<br><small>SVG code placeholder</small></div>`;
-                quiz.questionState = 'active';
+                quiz.canAnswer = true;
+                // Start timer after brief delay
+                setTimeout(() => {
+                    if (quiz.isActive && quiz.canAnswer) {
+                        startTimer();
+                    }
+                }, 100);
             }
 
             // Reset option buttons
             resetOptionButtons();
-
-            // Start timer with delay to allow image loading
-            const timerId = quiz.addTimer(setTimeout(() => {
-                if (quiz.isActive && quiz.currentQuestionIndex < quiz.questions.length) {
-                    startTimer();
-                }
-            }, 100));
         }
 
         function resetOptionButtons() {
             document.querySelectorAll('.option-btn').forEach(btn => {
                 btn.classList.remove('selected');
                 btn.disabled = false;
-                btn.style.pointerEvents = 'auto';
             });
         }
 
         function startTimer() {
-            if (quiz.questionState !== 'active') return;
+            if (!quiz.canAnswer) return;
 
-            quiz.startTime = performance.now();
+            quiz.startTime = Date.now();
             const timerElement = document.getElementById('timer');
             const progressElement = document.getElementById('timerProgressFill');
             
@@ -618,11 +555,11 @@
             progressElement.style.width = '0%';
 
             function updateTimer() {
-                if (!quiz.isActive || quiz.questionState === 'answered') {
+                if (!quiz.isActive || !quiz.canAnswer) {
                     return;
                 }
                 
-                const elapsed = performance.now() - quiz.startTime;
+                const elapsed = Date.now() - quiz.startTime;
                 const remaining = Math.max(0, quiz.config.timePerQuestion - elapsed);
                 
                 // Update display
@@ -641,51 +578,78 @@
                 
                 // Check if time is up
                 if (remaining <= 0) {
-                    submitAnswer();
+                    timeUp();
                     return;
                 }
                 
-                // Continue updating if still active
-                if (quiz.questionState === 'active') {
-                    const frameId = quiz.addAnimationFrame(requestAnimationFrame(updateTimer));
+                // Continue updating
+                if (quiz.canAnswer) {
+                    quiz.animationId = requestAnimationFrame(updateTimer);
                 }
             }
             
-            const frameId = quiz.addAnimationFrame(requestAnimationFrame(updateTimer));
+            quiz.animationId = requestAnimationFrame(updateTimer);
         }
 
         function selectAnswer(answer) {
-            if (!quiz.isActive || quiz.questionState !== 'active') {
+            if (!quiz.isActive || !quiz.canAnswer) {
                 return;
             }
             
             quiz.selectedAnswer = answer;
-            quiz.questionState = 'answered';
+            quiz.canAnswer = false; // Prevent further clicks
             
-            // Update button styles immediately
+            // Clean up timer
+            if (quiz.animationId) {
+                cancelAnimationFrame(quiz.animationId);
+                quiz.animationId = null;
+            }
+            
+            // Update button styles
             document.querySelectorAll('.option-btn').forEach(btn => {
                 btn.disabled = true;
-                btn.style.pointerEvents = 'none';
                 if (parseInt(btn.getAttribute('data-answer')) === answer) {
                     btn.classList.add('selected');
                 }
             });
             
             // Submit answer after brief delay for visual feedback
-            const timerId = quiz.addTimer(setTimeout(() => {
-                submitAnswer();
-            }, 150));
+            setTimeout(() => {
+                if (quiz.isActive) {
+                    submitAnswer();
+                }
+            }, 200);
+        }
+
+        function timeUp() {
+            if (!quiz.canAnswer) return;
+            
+            quiz.canAnswer = false;
+            
+            // Clean up timer
+            if (quiz.animationId) {
+                cancelAnimationFrame(quiz.animationId);
+                quiz.animationId = null;
+            }
+            
+            // Disable buttons
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.disabled = true;
+            });
+            
+            // Submit with no answer
+            setTimeout(() => {
+                if (quiz.isActive) {
+                    submitAnswer();
+                }
+            }, 200);
         }
 
         function submitAnswer() {
-            if (!quiz.isActive || quiz.questionState === 'transitioning') {
-                return;
-            }
-            
-            quiz.questionState = 'transitioning';
+            if (!quiz.isActive) return;
             
             const question = quiz.questions[quiz.currentQuestionIndex];
-            const timeUsed = performance.now() - quiz.startTime;
+            const timeUsed = Date.now() - quiz.startTime;
             const isCorrect = quiz.selectedAnswer === question.correctAnswer;
             
             quiz.userAnswers.push({
@@ -697,23 +661,19 @@
                 timeUsed: timeUsed
             });
 
-            // Clear timers and animation frames for current question
-            quiz.timers.forEach(timer => clearTimeout(timer));
-            quiz.timers.clear();
-            quiz.animationFrames.forEach(frame => cancelAnimationFrame(frame));
-            quiz.animationFrames.clear();
-
             // Move to next question
-            const timerId = quiz.addTimer(setTimeout(() => {
+            quiz.currentQuestionIndex++;
+            
+            setTimeout(() => {
                 if (quiz.isActive) {
-                    quiz.currentQuestionIndex++;
                     showQuestion();
                 }
-            }, 300));
+            }, 500);
         }
 
         function showResults() {
-            quiz.cleanup();
+            cleanupQuiz();
+            quiz.isActive = false;
             
             document.querySelector('.quiz-screen').style.display = 'none';
             document.querySelector('.results-screen').style.display = 'block';
@@ -733,7 +693,6 @@
                 resultItem.className = 'result-item';
                 
                 const groupNames = { 1: 'Group 1 (R)', 2: 'Group 2 (Mirror R)', null: 'No Answer' };
-                const question = quiz.questions[answer.questionNumber - 1];
                 
                 resultItem.innerHTML = `
                     <div class="result-left">
@@ -761,92 +720,63 @@
         }
 
         function cleanupQuiz() {
-            quiz.cleanup();
-            
-            // Reset UI elements
-            const timerElement = document.getElementById('timer');
-            const progressElement = document.getElementById('timerProgressFill');
-            const questionNumber = document.getElementById('questionNumber');
-            const questionImage = document.getElementById('questionImage');
-            
-            if (timerElement) {
-                timerElement.textContent = '0.0s';
-                timerElement.classList.remove('warning');
+            if (quiz.timerId) {
+                clearTimeout(quiz.timerId);
+                quiz.timerId = null;
             }
             
-            if (progressElement) {
-                progressElement.style.width = '0%';
-                progressElement.classList.remove('warning');
+            if (quiz.animationId) {
+                cancelAnimationFrame(quiz.animationId);
+                quiz.animationId = null;
             }
             
-            if (questionNumber) {
-                questionNumber.textContent = 'Question 1 of 10';
-            }
-            
-            if (questionImage) {
-                questionImage.innerHTML = 'Image will appear here';
-                questionImage.className = 'placeholder-image';
-            }
-            
-            // Reset option buttons
-            resetOptionButtons();
-            
-            // Clear results
-            const correctCount = document.getElementById('correctCount');
-            const incorrectCount = document.getElementById('incorrectCount');
-            const detailedResults = document.getElementById('detailedResults');
-            
-            if (correctCount) correctCount.textContent = '0';
-            if (incorrectCount) incorrectCount.textContent = '0';
-            if (detailedResults) detailedResults.innerHTML = '';
+            quiz.canAnswer = false;
         }
 
         function restartQuiz() {
-            // Preserve input values before cleanup
-            const numQuestions = document.getElementById('numQuestions').value;
-            const timePerQuestion = document.getElementById('timePerQuestion').value;
-            
-            // Complete cleanup
             cleanupQuiz();
-            quiz.reset();
+            quiz.isActive = false;
+            
+            // Reset quiz state
+            quiz = {
+                config: {},
+                questions: [],
+                currentQuestionIndex: 0,
+                selectedAnswer: null,
+                userAnswers: [],
+                isActive: false,
+                canAnswer: false,
+                timerId: null,
+                animationId: null,
+                startTime: 0
+            };
             
             // Show setup screen
             document.querySelector('.results-screen').style.display = 'none';
             document.querySelector('.setup-screen').style.display = 'block';
             
-            // Restore input values
-            document.getElementById('numQuestions').value = numQuestions;
-            document.getElementById('timePerQuestion').value = timePerQuestion;
+            // Reset UI elements
+            document.getElementById('timer').textContent = '0.0s';
+            document.getElementById('timer').classList.remove('warning');
+            document.getElementById('timerProgressFill').style.width = '0%';
+            document.getElementById('timerProgressFill').classList.remove('warning');
+            document.getElementById('questionNumber').textContent = 'Question 1 of 10';
+            document.getElementById('questionImage').innerHTML = 'Image will appear here';
+            document.getElementById('questionImage').className = 'placeholder-image';
+            
+            resetOptionButtons();
         }
-
-        // Prevent multiple rapid clicks globally
-        document.addEventListener('click', function(event) {
-            if (event.target.classList.contains('option-btn')) {
-                event.stopPropagation();
-            }
-        }, true);
 
         // Handle page visibility change
         document.addEventListener('visibilitychange', function() {
             if (document.hidden && quiz.isActive) {
-                // Pause or handle when page becomes hidden
-                console.log('Quiz paused due to page visibility change');
+                cleanupQuiz();
             }
         });
 
         // Handle beforeunload
         window.addEventListener('beforeunload', function() {
-            quiz.cleanup();
-        });
-
-        // Preload images for better performance
-        window.addEventListener('load', () => {
-            imageData.forEach(img => {
-                if (img.src.startsWith('data:') || img.src.includes('.')) {
-                    const image = new Image();
-                    image.src = img.src;
-                }
-            });
+            cleanupQuiz();
         });
     </script>
 </body>
